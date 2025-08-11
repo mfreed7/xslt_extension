@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "XSLT Polyfill",
+  "version": "1.0",
+  "description": "Applies an XSLT polyfill to all XML documents.",
+  "permissions": [
+    "activeTab"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*.xml",
+        "https://*/*.xml",
+        "file://*/*.xml"
+      ],
+      "js": [
+        "xslt-wasm.js",
+        "xslt-polyfill-src.js",
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ]
+}
+
