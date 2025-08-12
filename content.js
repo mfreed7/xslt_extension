@@ -1,4 +1,10 @@
 function processContent() {
+  const nativeSupported = 'XSLTProcessor' in window;
+  if (nativeSupported) {
+    // Avoid doing anything if native XSLT is supported.
+    console.log('Not running XSLT extension because this browser supports native XSLT.');
+    return;
+  }
   // Try to avoid the FOUC.
   document.body.style.display = 'none';
   const xmlContent = document.querySelector('#webkit-xml-viewer-source-xml');
