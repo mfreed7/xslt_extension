@@ -1,4 +1,5 @@
 function processContent() {
+  // Try to avoid the FOUC.
   document.body.style.display = 'none';
   const xmlContent = document.querySelector('#webkit-xml-viewer-source-xml');
   if (!xmlContent || !xmlContent.childNodes.length) {
@@ -18,7 +19,9 @@ function processContent() {
 
   // Now load the XML with XSLT:
   window.loadXmlContentWithXsltWhenReady(xmlText, document.location.href)
-    .then(() => (document.body.style.display = null));
+    .then(() => {
+      setTimeout(() => (document.body.style.display = null), 100);
+    });
   console.log('Transformed XML with XSLT.');
 }
 
