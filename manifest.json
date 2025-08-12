@@ -3,9 +3,6 @@
   "name": "XSLT Polyfill",
   "version": "1.0",
   "description": "Applies an XSLT polyfill to all XML documents.",
-  "permissions": [
-    "activeTab"
-  ],
   "content_scripts": [
     {
       "matches": [
