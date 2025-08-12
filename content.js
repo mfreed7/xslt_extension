@@ -1,15 +1,24 @@
-// This script finds the XML content within the .pretty-print div,
-// converts it to a data URL, and passes it to the global
-// loadXmlWithXsltWhenReady function.
-
 function processContent() {
-  const xmlContent = document.querySelector('.pretty-print');
-  const xmlText = xmlContent.textContent;
-  if (!xmlText.length) {
+  document.body.style.display = 'none';
+  const xmlContent = document.querySelector('#webkit-xml-viewer-source-xml');
+  if (!xmlContent || !xmlContent.childNodes.length) {
+    // Wait for content to load
     setTimeout(processContent,100);
     return;
   }
-  window.loadXmlContentWithXsltWhenReady(xmlText, document.location.href);
+  const xsl = xmlContent.childNodes[0];
+  if (xsl.nodeType !== Node.PROCESSING_INSTRUCTION_NODE) {
+    // The XSL file must be first. Otherwise bail out.
+    document.body.style.display = null;
+    return;
+  }
+  // Get XML source back:
+  const serializer = (new XMLSerializer());
+  const xmlText = Array.from(xmlContent.childNodes).map((c) => serializer.serializeToString(c)).join(' ');
+
+  // Now load the XML with XSLT:
+  window.loadXmlContentWithXsltWhenReady(xmlText, document.location.href)
+    .then(() => (document.body.style.display = null));
   console.log('Transformed XML with XSLT.');
 }
 

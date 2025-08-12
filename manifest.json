@@ -14,8 +14,7 @@
         "file://*/*.xml"
       ],
       "js": [
-        "xslt-wasm.js",
-        "xslt-polyfill-src.js",
+        "xslt-polyfill.min.js",
         "content.js"
       ],
       "run_at": "document_start"
