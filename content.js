@@ -1,5 +1,5 @@
 function processContent() {
-  const nativeSupported = 'XSLTProcessor' in window;
+  const nativeSupported = ('XSLTProcessor' in window) && window.XSLTProcessor.toString().includes('native code')
   if (nativeSupported) {
     // Avoid doing anything if native XSLT is supported.
     console.log('Not running XSLT extension because this browser supports native XSLT.');
