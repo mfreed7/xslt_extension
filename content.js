@@ -1,11 +1,13 @@
 function processContent() {
-  const nativeSupported = ('XSLTProcessor' in window) && window.XSLTProcessor.toString().includes('native code')
-  if (nativeSupported) {
-    // Avoid doing anything if native XSLT is supported.
-    console.log('Not running XSLT extension because this browser supports native XSLT.');
+  if (!document.contentType.endsWith('/xml') && !document.contentType.endsWith('+xml')) {
     return;
   }
-  // Try to avoid the FOUC.
+  const nativeSupported = ('XSLTProcessor' in window) && window.XSLTProcessor.toString().includes('native code')
+  if (nativeSupported) {
+    console.log('Not running the XSLT polyfill extension because this browser supports native XSLT.');
+    return;
+  }
+  // Try to avoid FOUC.
   document.body.style.display = 'none';
   const xmlContent = document.querySelector('#webkit-xml-viewer-source-xml');
   if (!xmlContent || !xmlContent.childNodes.length) {
@@ -28,7 +30,8 @@ function processContent() {
     .then(() => {
       setTimeout(() => (document.body.style.display = null), 100);
     });
-  console.log('Transformed XML with XSLT.');
+  console.log('XSLT Polyfill has transformed this document.');
 }
 
+window.xsltPolyfillQuiet = true; // Avoid spamming the console
 window.addEventListener('load', processContent);

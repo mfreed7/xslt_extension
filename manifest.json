@@ -10,8 +10,8 @@
         "https://*/*"
       ],
       "js": [
-        "xslt-polyfill.min.js",
-        "content.js"
+        "content.js",
+        "xslt-polyfill.min.js"
       ],
       "run_at": "document_start"
     }
