@@ -6,9 +6,8 @@
   "content_scripts": [
     {
       "matches": [
-        "http://*/*.xml",
-        "https://*/*.xml",
-        "file://*/*.xml"
+        "http://*/*",
+        "https://*/*"
       ],
       "js": [
         "xslt-polyfill.min.js",
