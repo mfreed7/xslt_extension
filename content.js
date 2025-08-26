@@ -8,7 +8,7 @@ function processContent() {
     return;
   }
   // Try to avoid FOUC.
-  document.body.style.display = 'none';
+  setHidden(true);
   const xmlContent = document.querySelector('#webkit-xml-viewer-source-xml');
   if (!xmlContent || !xmlContent.childNodes.length) {
     // Wait for content to load
@@ -18,7 +18,7 @@ function processContent() {
   const xsl = xmlContent.childNodes[0];
   if (xsl.nodeType !== Node.PROCESSING_INSTRUCTION_NODE) {
     // The XSL file must be first. Otherwise bail out.
-    document.body.style.display = null;
+    setHidden(false);
     return;
   }
   // Get XML source back:
@@ -28,10 +28,15 @@ function processContent() {
   // Now load the XML with XSLT:
   window.loadXmlContentWithXsltWhenReady(xmlText, document.location.href)
     .then(() => {
-      setTimeout(() => (document.body.style.display = null), 100);
+      setTimeout(() => setHidden(false), 100);
     });
   console.log('XSLT Polyfill has transformed this document.');
 }
-
+function setHidden(hidden) {
+  if (!document.body || !document.body.style) {
+    return;
+  }
+  document.body.style.display = hidden ? 'none' : null;
+}
 window.xsltPolyfillQuiet = true; // Avoid spamming the console
 window.addEventListener('load', processContent);
