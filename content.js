@@ -39,4 +39,5 @@ function setHidden(hidden) {
   document.body.style.display = hidden ? 'none' : null;
 }
 window.xsltPolyfillQuiet = true; // Avoid spamming the console
+window.xsltDontAutoloadXmlDocs = true; // Avoid the code that auto-loads an XML document
 window.addEventListener('load', processContent);
