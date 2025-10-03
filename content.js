@@ -1,3 +1,5 @@
+let hideRequestId = 0;
+
 // Immediately-invoked function to start the process.
 (function initTransform() {
   const nativeSupported = ('XSLTProcessor' in window) && window.XSLTProcessor.toString().includes('native code');
@@ -45,12 +47,19 @@ async function fetchAndTransform() {
 function setHidden(hidden) {
   // This function needs to be robust since it's called very early at document_start.
   if (!document.body) {
-    // If the body doesn't exist yet, wait for the next animation frame to try again.
+    // If the body doesn't exist yet, use animation frames.
+    // If we're hiding, schedule it. If we're un-hiding, cancel the scheduled hide.
     if (hidden) {
-      requestAnimationFrame(() => setHidden(true));
+      hideRequestId = requestAnimationFrame(() => setHidden(true));
+    } else {
+      cancelAnimationFrame(hideRequestId);
     }
     return;
   }
+
+  // Once the body exists, we can act on it directly.
+  // Also cancel any pending hide request just in case.
+  cancelAnimationFrame(hideRequestId);
   document.body.style.display = hidden ? 'none' : '';
 }
 
