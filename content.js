@@ -1,60 +1,59 @@
-function processContent() {
+// Immediately-invoked function to start the process.
+(function initTransform() {
   const nativeSupported = ('XSLTProcessor' in window) && window.XSLTProcessor.toString().includes('native code');
   if (nativeSupported) {
     console.log('Not running the XSLT polyfill extension because this browser supports native XSLT.');
     return;
   }
 
-  const xmlViewerContent = document.querySelector('#webkit-xml-viewer-source-xml');
-  if (xmlViewerContent) {
-    // Case 1: Browser's native XML viewer.
-    if (!xmlViewerContent.childNodes.length) {
-      // Wait for content to load
-      setTimeout(processContent, 100);
-      return;
-    }
-    if (!hasXsltProcessingInstruction(xmlViewerContent.childNodes)) {
-      return; // No XSLT, do nothing.
-    }
-    // Try to avoid FOUC.
-    setHidden(true);
-    const serializer = (new XMLSerializer());
-    const xmlText = Array.from(xmlViewerContent.childNodes).map((c) => serializer.serializeToString(c)).join('');
-    transformAndReveal(xmlText);
-  } else if (document instanceof XMLDocument) {
-    // Case 2: Raw XML document (e.g. in an iframe).
-    if (!hasXsltProcessingInstruction(document.childNodes)) {
-      return; // No XSLT, do nothing.
-    }
-    // Try to avoid FOUC.
-    setHidden(true);
-    const serializer = new XMLSerializer();
-    const xmlText = serializer.serializeToString(document);
-    transformAndReveal(xmlText);
+  // Step 1: Immediately hide the document to prevent FOUC.
+  setHidden(true);
+
+  // Step 2: Asynchronously fetch and process the document.
+  fetchAndTransform().catch(error => {
+    // Catch any errors, log them, and ensure the document is visible.
+    console.error('Error during XSLT transformation:', error);
+    setHidden(false);
+  });
+})();
+
+async function fetchAndTransform() {
+  const response = await fetch(document.location.href);
+  if (!response.ok) {
+    // If fetch fails, unhide and stop.
+    setHidden(false);
+    console.warn(`XSLT Polyfill: Failed to fetch document: ${response.statusText}`);
+    return;
   }
-}
+  const xmlBytes = new Uint8Array(await response.arrayBuffer());
 
-function hasXsltProcessingInstruction(nodes) {
-  return Array.from(nodes).some(node =>
-    node.nodeType === Node.PROCESSING_INSTRUCTION_NODE && node.target === 'xml-stylesheet'
-  );
-}
+  // Decode a small chunk to check for the processing instruction.
+  const decoder = new TextDecoder();
+  const textChunk = decoder.decode(xmlBytes.subarray(0, 2048));
 
-function transformAndReveal(xmlText) {
-  // Now load the XML with XSLT:
-  window.loadXmlContentWithXsltWhenReady(xmlText, document.location.href)
-    .then(() => {
-      setTimeout(() => setHidden(false), 100);
-    });
-  console.log('XSLT Polyfill has transformed this document.');
+  if (textChunk.includes('<?xml-stylesheet')) {
+    // PI found, proceed with transformation. The page is already hidden.
+    // The polyfill's replaceDoc function will handle revealing the new content.
+    await window.loadXmlContentWithXsltFromBytesWhenReady(xmlBytes, document.location.href);
+    console.log('XSLT Polyfill has transformed this document.');
+  } else {
+    // No PI, unhide the original document.
+    setHidden(false);
+  }
 }
 
 function setHidden(hidden) {
-  if (!document.body || !document.body.style) {
+  // This function needs to be robust since it's called very early at document_start.
+  if (!document.body) {
+    // If the body doesn't exist yet, wait for the next animation frame to try again.
+    if (hidden) {
+      requestAnimationFrame(() => setHidden(true));
+    }
     return;
   }
-  document.body.style.display = hidden ? 'none' : null;
+  document.body.style.display = hidden ? 'none' : '';
 }
-window.xsltPolyfillQuiet = true; // Avoid spamming the console
-window.xsltDontAutoloadXmlDocs = true; // Avoid the code that auto-loads an XML document
-window.addEventListener('load', processContent);
+
+// Global settings for the polyfill script.
+window.xsltPolyfillQuiet = true;
+window.xsltDontAutoloadXmlDocs = true;
