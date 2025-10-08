@@ -1,4 +1,4 @@
-let hideRequestId = 0;
+let xslt_ext_hideRequestId = 0;
 
 // Immediately-invoked function to start the process.
 (function initTransform() {
@@ -8,13 +8,22 @@ let hideRequestId = 0;
     return;
   }
 
+  if (document.location.protocol === 'file:') {
+    console.log('XSLT polyfill extension: Fetching from file:// URLs is not supported by this extension.');
+    return;
+  }
+
   // Step 1: Immediately hide the document to prevent FOUC.
   setHidden(true);
 
   // Step 2: Asynchronously fetch and process the document.
   fetchAndTransform().catch(error => {
     // Catch any errors, log them, and ensure the document is visible.
-    console.error('Error during XSLT transformation:', error);
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        console.log('XSLT polyfill extension: Unable to load the site via fetch. This can happen with local files (file://) or due to network errors.');
+    } else {
+        console.error('Error during XSLT transformation:', error);
+    }
     setHidden(false);
   });
 })();
@@ -50,16 +59,16 @@ function setHidden(hidden) {
     // If the body doesn't exist yet, use animation frames.
     // If we're hiding, schedule it. If we're un-hiding, cancel the scheduled hide.
     if (hidden) {
-      hideRequestId = requestAnimationFrame(() => setHidden(true));
+      xslt_ext_hideRequestId = requestAnimationFrame(() => setHidden(true));
     } else {
-      cancelAnimationFrame(hideRequestId);
+      cancelAnimationFrame(xslt_ext_hideRequestId);
     }
     return;
   }
 
   // Once the body exists, we can act on it directly.
   // Also cancel any pending hide request just in case.
-  cancelAnimationFrame(hideRequestId);
+  cancelAnimationFrame(xslt_ext_hideRequestId);
   document.body.style.display = hidden ? 'none' : '';
 }
 
