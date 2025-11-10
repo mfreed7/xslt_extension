@@ -4,6 +4,13 @@ let xslt_ext_hideRequestId = 0;
 (function initTransform() {
   const nativeSupported = ('XSLTProcessor' in window) && window.XSLTProcessor.toString().includes('native code');
   if (nativeSupported) {
+    try {
+      new XSLTProcessor();
+    } catch {
+      nativeSupported = false;
+    }
+  }
+  if (nativeSupported) {
     console.log('Not running the XSLT polyfill extension because this browser supports native XSLT.');
     return;
   }
