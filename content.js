@@ -2,7 +2,7 @@ let xslt_ext_hideRequestId = 0;
 
 // Immediately-invoked function to start the process.
 (function initTransform() {
-  const nativeSupported = ('XSLTProcessor' in window) && window.XSLTProcessor.toString().includes('native code');
+  let nativeSupported = ('XSLTProcessor' in window) && window.XSLTProcessor.toString().includes('native code');
   if (nativeSupported) {
     try {
       new XSLTProcessor();
