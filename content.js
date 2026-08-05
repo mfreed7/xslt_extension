@@ -1,5 +1,12 @@
 // Immediately-invoked function to start the process.
 (function initTransform() {
+  // Do nothing for non-XML (also no console message).
+  const type = document.contentType;
+  const isXml = type === "text/xml" || type === "application/xml" || type.endsWith("+xml");
+  if (!isXml) {
+    return;
+  }
+
   let nativeSupported = 'XSLTProcessor' in window && window.XSLTProcessor.toString().includes('native code');
   if (nativeSupported) {
     try {
