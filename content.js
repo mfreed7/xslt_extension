@@ -61,6 +61,17 @@ async function fetchAndTransform() {
     // The polyfill's replaceDoc function will handle revealing the new content.
     try {
       await xsltPolyfillReady();
+      document.addEventListener('DOMContentLoaded', () => {
+        for (const form of document.querySelectorAll('form[name]')) {
+          const name = form.getAttribute('name');
+          if (name && !(name in document)) {
+            Object.defineProperty(document, name, {
+              configurable: true,
+              get: () => form,
+            });
+          }
+        }
+      }, { capture: true, once: true });
       await loadXmlWithXsltFromBytes(xmlBytes, document.location.href);
     } catch (err) {
       console.error(`Error displaying XML file: ${err.message || err.toString()}`);
