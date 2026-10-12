@@ -50,13 +50,28 @@ async function fetchAndTransform() {
     console.warn(`XSLT Polyfill: Failed to fetch document: ${response.statusText}`);
     return;
   }
-  const xmlBytes = new Uint8Array(await response.arrayBuffer());
+  let xmlBytes = new Uint8Array(await response.arrayBuffer());
 
-  // Decode a small chunk to check for the processing instruction.
   const decoder = new TextDecoder();
-  const textChunk = decoder.decode(xmlBytes.subarray(0, 2048));
+  const hasStylesheetInstruction = (bytes) =>
+    decoder.decode(bytes.subarray(0, 2048)).includes('<?xml-stylesheet');
 
-  if (textChunk.includes('<?xml-stylesheet')) {
+  // A form submission may have loaded a POST response that differs from a GET
+  // of the same URL. Fall back to the XML document that is already displayed.
+  if (!hasStylesheetInstruction(xmlBytes)) {
+    if (document.readyState === 'loading') {
+      await new Promise((resolve) => {
+        document.addEventListener('DOMContentLoaded', resolve, { once: true });
+      });
+    }
+    const displayedXml = new XMLSerializer().serializeToString(document);
+    const displayedXmlBytes = new TextEncoder().encode(displayedXml);
+    if (hasStylesheetInstruction(displayedXmlBytes)) {
+      xmlBytes = displayedXmlBytes;
+    }
+  }
+
+  if (hasStylesheetInstruction(xmlBytes)) {
     // PI found, proceed with transformation. The page is already hidden.
     // The polyfill's replaceDoc function will handle revealing the new content.
     try {
