@@ -9,8 +9,7 @@
         "<all_urls>"
       ],
       "js": [
-        "content.js",
-        "xslt-polyfill.min.js"
+        "xslt-extension.js"
       ],
       "run_at": "document_start",
       "all_frames": true,
@@ -18,4 +17,3 @@
     }
   ]
 }
-
