@@ -70,6 +70,9 @@ async function fetchAndTransform() {
   window.xsltPolyfillSpinner = null;
 }
 
-// Global settings for the polyfill script.
-window.xsltPolyfillQuiet = true;
-window.xsltDontAutoloadXmlDocs = true;
+// Settings for the polyfill, which shares this scope (see scripts/bundle.mjs).
+const xsltPolyfillOptions = {
+  xsltPolyfillQuiet: true,
+  xsltDontAutoloadXmlDocs: true,
+  xsltUsePolyfillOnlyIfNeeded: true,
+};
