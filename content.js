@@ -73,3 +73,4 @@ async function fetchAndTransform() {
 // Global settings for the polyfill script.
 window.xsltPolyfillQuiet = true;
 window.xsltDontAutoloadXmlDocs = true;
+window.xsltUsePolyfillOnlyIfNeeded = true;
