@@ -52,7 +52,11 @@ async function fetchAndTransform() {
     console.warn(`XSLT Polyfill: Failed to fetch document: ${response.statusText}`);
     return;
   }
-  const xmlBytes = new Uint8Array(await response.arrayBuffer());
+  // The polyfill parses the bytes as UTF-8, so decode them the way the browser
+  // decoded this document and re-encode as UTF-8. Invalid bytes throw, like
+  // they fail the native parse.
+  const documentDecoder = new TextDecoder(document.characterSet, { fatal: true });
+  const xmlBytes = new TextEncoder().encode(documentDecoder.decode(await response.arrayBuffer()));
 
   // Decode a small chunk to check for the processing instruction.
   const decoder = new TextDecoder();
