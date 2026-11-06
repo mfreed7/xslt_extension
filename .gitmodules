@@ -1,0 +1,3 @@
+[submodule "xslt_polyfill"]
+	path = xslt_polyfill
+	url = https://github.com/mfreed7/xslt_polyfill.git

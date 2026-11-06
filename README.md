@@ -13,4 +13,4 @@ I'm happy to review [pull requests](https://github.com/mfreed7/xslt_extension/pu
 
 ## Building
 
-The extension's content script, `xslt-extension.js`, is generated from `content.js` and `xslt-polyfill.min.js`. After changing either, run `node scripts/bundle.mjs`.
+The extension's content script, `xslt-extension.js`, is generated from `content.js` and the `xslt_polyfill` submodule (`xslt_polyfill/xslt-polyfill.min.js`). After changing either, run `node scripts/bundle.mjs` (which initializes submodules, builds `xslt_polyfill`, and bundles `xslt-extension.js`).
