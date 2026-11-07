@@ -14,7 +14,7 @@ The rule to hold it to: **a page must not be able to do anything through the ext
 Properties to check for:
 
 - **Dormant while native XSLT exists.** No globals, no prototype patches, no replaced `XSLTProcessor`.
-- **Same inputs transform as native XSLT did.** Native XSLT only honors `<?xml-stylesheet?>` in the prolog; fetches stylesheets, imports and `document()` same-origin (Chromium: `RequestMode::kSameOrigin`); applies CSP `script-src` to them; and keeps data as data. Anything the polyfill accepts beyond that is a new capability for attackers.
+- **Same inputs transform as native XSLT did.** Native XSLT only honors `<?xml-stylesheet?>` in the prolog; fetches stylesheets, imports and `document()` same-origin (Chromium: `RequestMode::kSameOrigin`); applies CSP `script-src` to them; and keeps data as data (Firefox does; Chrome's reparsing doesn't for `<style>`/`<script>`, see B1). Anything the polyfill accepts beyond that is a new capability for attackers.
 - **Content can't steer the polyfill.** Document and element content (including `<form>` controls, and elements named like properties) must not change which code runs or break it.
 
 ## Reviewing a change
@@ -24,7 +24,7 @@ Review `git diff OLD NEW -- src scripts Makefile` in the polyfill repo, plus any
 - **Reach.** Changes to defaults or options (`xsltUsePolyfillOnlyIfNeeded`, `xsltUsePolyfillAlways`, `xsltDontAutoloadXmlDocs`, the native-support detection), or to `matches`, `all_frames`, `world`, or permissions in the manifest. Anything that makes the polyfill run where it didn't before needs a reason.
 - **Global side effects.** New `window.*` globals and new prototype patches (`Document.prototype`, `Element.prototype`, `Node.prototype`). Patches must apply only to the document being polyfilled, never to every page.
 - **HTML sinks.** `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `setHTMLUnsafe`, `document.write`, `DOMParser` with `text/html`, and script elements that get created or re-run. Check where their input comes from: XML or XSLT data, error messages, URLs.
-- **Serialize-then-reparse.** Native XSLT builds the result DOM directly. The polyfill serializes libxslt's output to text and reparses it. Anywhere text gets decoded twice (e.g. raw-text elements, entity decoding of script text), data can turn into markup or script.
+- **Serialize-then-reparse.** Firefox's native XSLT builds the result DOM directly. The polyfill serializes libxslt's output to text and reparses it, as Chrome's native XSLT did. Anywhere text gets decoded twice (e.g. raw-text elements, entity decoding of script text), data can turn into markup or script.
 - **Network and data.** New `fetch` or other requests. They should only go to URLs the page provides (stylesheets, `document()`, the document itself), never to hard-coded hosts.
 - **Code execution.** `eval`, `new Function`, `setTimeout` with strings, or new Wasm imports.
 - **Stylesheet discovery.** How the stylesheet PI is found (`content.js`, `loadXmlWithXsltFromBytes()`). Matching text in the first bytes with a regex also matches CDATA and comments, which user content controls (feeds, uploaded SVG/XHTML); it should come from PIs in the parsed prolog.
