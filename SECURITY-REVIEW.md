@@ -54,4 +54,4 @@ When a review finds a new kind of bug, add a case that fails on the bad build.
 
 ## Reporting
 
-Report security bugs privately to the maintainer, not in a public issue or PR that describes the exploit. Fixes for non-exploitable robustness bugs can go straight to a PR.
+Report security bugs privately (see [SECURITY.md](SECURITY.md)), not in a public issue or PR that describes the exploit. Fixes for non-exploitable robustness bugs can go straight to a PR.
