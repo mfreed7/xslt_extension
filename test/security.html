@@ -1,0 +1,119 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>XSLT extension security checks</title>
+<style>
+  td { padding: 2px 8px; vertical-align: top; }
+  .PASS { color: green; } .FAIL { color: red; } .SKIP { color: gray; }
+</style>
+<h1>XSLT extension security checks</h1>
+<p>See SECURITY-REVIEW.md. Serve the repo root over HTTP (after <code>git submodule update --init xslt_polyfill</code>) and load this page twice: with the extension installed (section A), then without it (section B).</p>
+<table><tbody id="results"></tbody></table>
+<p id="done"></p>
+<script>
+'use strict';
+if (location.search === '?child') {
+  document.currentScript.remove();
+} else {
+  run();
+}
+
+function report(status, name, detail = '') {
+  const row = document.getElementById('results').insertRow();
+  row.className = status;
+  for (const text of [status, name, detail]) row.insertCell().textContent = text;
+}
+
+function loadFrame(src) {
+  return new Promise((resolve) => {
+    const iframe = document.createElement('iframe');
+    iframe.src = src;
+    iframe.onload = () => resolve(iframe.contentWindow);
+    document.body.append(iframe);
+  });
+}
+
+const isNativeFunction = (f) => typeof f === 'function' && /\[native code\]/.test(Function.prototype.toString.call(f));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function run() {
+  // Content scripts don't match about:blank, so this XSLTProcessor is native (if the browser has one).
+  const NativeXP = (await loadFrame('about:blank')).XSLTProcessor;
+  const nativeAvailable = isNativeFunction(NativeXP);
+  report('SKIP', 'Environment', `native XSLT: ${nativeAvailable}`);
+
+  // A. With native XSLT available, the extension must leave pages alone. A dormant
+  // extension leaves no trace, so this page can't tell whether it's installed.
+  if (!nativeAvailable) {
+    report('SKIP', 'A. Reach checks', 'need native XSLT available');
+  } else {
+    const child = await loadFrame('security.html?child');
+    for (const [label, win] of [['top', window], ['iframe', child]]) {
+      const leaked = ['xsltPolyfillInstalled', 'xsltPolyfillVersion', 'createXSLTTransformModule', 'showError', 'xsltPolyfillReady', 'loadXmlWithXsltFromBytes', 'loadXmlWithXsltFromUrl', 'loadXmlUrlWithXsltWhenReady'].filter((g) => g in win);
+      const patched = [
+        ['XSLTProcessor', win.XSLTProcessor],
+        ['Document.prototype.createElement', win.Document.prototype.createElement],
+        ['Element.prototype.insertAdjacentHTML', win.Element.prototype.insertAdjacentHTML],
+        ['innerHTML setter', Object.getOwnPropertyDescriptor(win.Element.prototype, 'innerHTML').set],
+        ['tagName getter', Object.getOwnPropertyDescriptor(win.Element.prototype, 'tagName').get],
+      ].filter(([, f]) => !isNativeFunction(f)).map(([n]) => n);
+      report(leaked.length || patched.length ? 'FAIL' : 'PASS', `A. Polyfill dormant on HTML page (${label})`,
+        [leaked.length && `globals: ${leaked.join(', ')}`, patched.length && `replaced: ${patched.join(', ')}`].filter(Boolean).join('; '));
+    }
+  }
+
+  // B. Differential tests: the polyfill must not turn data into markup or script where native XSLT doesn't.
+  const host = await loadFrame('polyfill-host.xml');
+  if (!host.XSLTProcessor?.prototype?.isPolyfill) {
+    report('SKIP', 'B. Polyfill vs native', 'polyfill not active in polyfill-host.xml; run without the extension installed');
+  } else {
+    await host.xsltPolyfillReady();
+    await testRawText(host.XSLTProcessor, nativeAvailable ? NativeXP : null);
+    await testScriptData(nativeAvailable);
+  }
+  document.getElementById('done').textContent = 'Done.';
+}
+
+// XML data in raw-text elements (<style>, <script>) must stay text through transformToFragment().
+async function testRawText(PolyXP, NativeXP) {
+  const xsl = `<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"><xsl:output method="html"/>
+    <xsl:template match="/"><div><style>.x{content:"<xsl:value-of select="d"/>"}</style><script>//<xsl:value-of select="d"/><\/script><textarea><xsl:value-of select="d"/></textarea><p title="{d}"><xsl:value-of select="d"/></p></div></xsl:template></xsl:stylesheet>`;
+  const xml = `<d>&lt;/style&gt;&lt;/script&gt;&lt;/textarea&gt;&lt;img src=x onerror="window.__hits.push(1)"&gt;</d>`;
+  async function count(XP) {
+    window.__hits = [];
+    const p = new XP();
+    p.importStylesheet(new DOMParser().parseFromString(xsl, 'text/xml'));
+    const container = document.createElement('div');
+    container.hidden = true;
+    container.append(p.transformToFragment(new DOMParser().parseFromString(xml, 'text/xml'), document));
+    document.body.append(container);
+    await sleep(1000);
+    const result = { imgs: container.querySelectorAll('img').length, hits: window.__hits.length };
+    container.remove();
+    return result;
+  }
+  const poly = await count(PolyXP);
+  const native = NativeXP ? await count(NativeXP) : { imgs: 0, hits: 0 };
+  report(poly.imgs > native.imgs || poly.hits > native.hits ? 'FAIL' : 'PASS',
+    'B1. Data in <style>/<script> stays text (transformToFragment)',
+    `polyfill: ${poly.imgs} <img>, ${poly.hits} handler runs; native: ${NativeXP ? `${native.imgs} <img>, ${native.hits} handler runs` : 'n/a'}`);
+}
+
+// Entity-like text in XML data must not be decoded again inside output <script> (document transform).
+async function testScriptData(nativeAvailable) {
+  const url = new URL('script-data.xml', location).href;
+  let native = 'n/a';
+  if (nativeAvailable) {
+    const win = await loadFrame(url);
+    await sleep(500);
+    native = `got ${JSON.stringify(win.got)}, injected: ${win.injected === 1}`;
+  }
+  const host = await loadFrame('polyfill-host.xml');
+  await host.xsltPolyfillReady();
+  // Create the bytes in the frame's realm; the polyfill doesn't accept cross-realm typed arrays.
+  const bytes = new host.Uint8Array(await (await fetch(url)).arrayBuffer());
+  await host.loadXmlWithXsltFromBytes(bytes, url);
+  await sleep(1000);
+  report(host.injected === 1 ? 'FAIL' : 'PASS', 'B2. Data in output <script> is not entity-decoded again',
+    `polyfill: got ${JSON.stringify(host.got)}, injected: ${host.injected === 1}; native: ${native}`);
+}
+</script>
