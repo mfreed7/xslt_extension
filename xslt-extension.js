@@ -52,6 +52,13 @@ async function fetchAndTransform() {
     console.warn(`XSLT Polyfill: Failed to fetch document: ${response.statusText}`);
     return;
   }
+  if (response.redirected) {
+    // This GET isn't the request that produced the document (e.g. a POST that
+    // the server answers with a redirect for GET), so it's the wrong document.
+    window.xsltPolyfillSpinner = null;
+    console.warn('XSLT Polyfill: Not transforming this document: refetching it was redirected.');
+    return;
+  }
   // The polyfill parses the bytes as UTF-8, so decode them the way the browser
   // decoded this document and re-encode as UTF-8. Invalid bytes throw, like
   // they fail the native parse.
