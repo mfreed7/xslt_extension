@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<!-- Loads the bundled polyfill in active mode, for security.html. -->
+<root xmlns:h="http://www.w3.org/1999/xhtml">
+  <h:script>window.xsltPolyfillQuiet = true; window.xsltDontAutoloadXmlDocs = true; window.xsltUsePolyfillOnlyIfNeeded = false;</h:script>
+  <h:script src="../xslt_polyfill/xslt-polyfill.min.js"/>
+</root>
