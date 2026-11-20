@@ -29,19 +29,65 @@
   console.log('Starting XSLT polyfill transformation...');
   window.xsltPolyfillSpinner = 'XSLT Extension is processing this page, please wait...';
 
-  // Step 2: Asynchronously fetch and process the document.
-  fetchAndTransform().catch((error) => {
-    // Catch any errors, log them, and ensure the document is visible.
-    if (error instanceof TypeError && error.message === 'Failed to fetch') {
-      console.log(
-        'XSLT polyfill extension: Unable to load the site via fetch. This can happen with local files (file://) or due to network errors.',
-      );
-    } else {
-      console.error('Error during XSLT transformation:', error);
+  // Step 2: Once the prolog is parsed, skip the refetch if it has no
+  // xml-stylesheet PI. The polyfill only transforms if it finds one there, so
+  // the refetch would be wasted.
+  whenPrologParsed(() => {
+    if (!prologHasStylesheetPI()) {
+      window.xsltPolyfillSpinner = null;
+      return;
     }
-    window.xsltPolyfillSpinner = null; // Error - stop. Make things visible again.
+    // Step 3: Asynchronously fetch and process the document.
+    fetchAndTransform().catch((error) => {
+      // Catch any errors, log them, and ensure the document is visible.
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        console.log(
+          'XSLT polyfill extension: Unable to load the site via fetch. This can happen with local files (file://) or due to network errors.',
+        );
+      } else {
+        console.error('Error during XSLT transformation:', error);
+      }
+      window.xsltPolyfillSpinner = null; // Error - stop. Make things visible again.
+    });
   });
 })();
+
+// Calls `callback` once the document's prolog (everything before the root
+// element) is parsed: when the root element is inserted, or at
+// DOMContentLoaded if there's no root element (e.g. a parse error). Page
+// scripts are inside the root element, so the prolog is complete before any of
+// them run.
+function whenPrologParsed(callback) {
+  let done = false;
+  const observer = new MutationObserver(() => {
+    if (document.documentElement) finish();
+  });
+  function finish() {
+    if (done) return;
+    done = true;
+    observer.disconnect();
+    callback();
+  }
+  if (document.documentElement || document.readyState !== 'loading') {
+    finish();
+    return;
+  }
+  observer.observe(document, { childList: true });
+  document.addEventListener('DOMContentLoaded', finish, { once: true });
+}
+
+// True if the prolog has an xml-stylesheet PI. This is deliberately looser
+// than the polyfill's own check (which also looks at type, href and
+// alternate), so it never skips a document the polyfill would transform.
+function prologHasStylesheetPI() {
+  for (const node of document.childNodes) {
+    if (node.nodeType === Node.ELEMENT_NODE) break;
+    if (node.nodeType === Node.PROCESSING_INSTRUCTION_NODE && node.target === 'xml-stylesheet') {
+      return true;
+    }
+  }
+  return false;
+}
 
 async function fetchAndTransform() {
   const response = await fetch(document.location.href);
